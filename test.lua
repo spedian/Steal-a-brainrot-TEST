@@ -1,13 +1,15 @@
 --[[
-Spedian Scripts v0.95 - ONLY Clone Phase + Permanent God Mode
-GUI with single button: Clone Phase Forward (Desync)
-God Mode + anti-ragdoll always running in background (no button)
+Spedian Scripts v0.95 - Your exact request
+GUI with ONLY the Clone Phase Forward button
+God Mode + anti-ragdoll ALWAYS ON in background (no button)
 Press F2 to open GUI
+Face base wall → Click the button
 ]]
 
 print("Spedian Scripts v0.95 loading...")
 
 local toggleKey = Enum.KeyCode.F2
+
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -77,7 +79,7 @@ scrollFrame.BackgroundTransparency = 1
 scrollFrame.ScrollBarThickness = 8
 scrollFrame.Parent = mainFrame
 
--- GOD MODE ALWAYS ON (silent, permanent)
+-- GOD MODE + ANTI-RAGDOLL ALWAYS ON (silent, permanent)
 local function enableGodMode()
     if localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
         local hum = localPlayer.Character.Humanoid
@@ -85,11 +87,15 @@ local function enableGodMode()
         hum.Health = math.huge
         hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
         hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+        print("God Mode + Anti-Ragdoll applied")
     end
 end
 
+-- Keep it on forever (every respawn + every frame)
 localPlayer.CharacterAdded:Connect(enableGodMode)
-enableGodMode()  -- activate immediately and forever
+RunService.Heartbeat:Connect(enableGodMode)  -- extra strong loop
+
+enableGodMode()
 
 -- Clone Desync Phase
 local cloneActive = false
@@ -161,7 +167,7 @@ local function stopCloneDesync()
     print("Clone phase stopped")
 end
 
--- GUI with only the clone button
+-- GUI with ONLY the clone button
 local yPos = 10
 local function refreshList()
     for _, child in ipairs(scrollFrame:GetChildren()) do
@@ -222,6 +228,6 @@ end)
 openBtn.Visible = not mainFrame.Visible
 
 print("Spedian Scripts v0.95 loaded")
-print("God Mode is always on in background")
+print("God Mode + Anti-Ragdoll is always on in background")
 print("Press F2 to open GUI")
 print("Face base wall → Click 'Clone Phase Forward (Desync)'")
