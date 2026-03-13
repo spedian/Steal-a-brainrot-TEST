@@ -1,12 +1,12 @@
 --[[
-Spedian Scripts v0.95 - Your exact request
+Spedian Scripts v0.96 - Your exact request
 GUI with ONLY the Clone Phase Forward button
-God Mode + anti-ragdoll ALWAYS ON in background (no button)
+God Mode + Anti-Ragdoll always on (silent, permanent)
 Press F2 to open GUI
 Face base wall → Click the button
 ]]
 
-print("Spedian Scripts v0.95 loading...")
+print("Spedian Scripts v0.96 loading...")
 
 local toggleKey = Enum.KeyCode.F2
 
@@ -24,8 +24,8 @@ screenGui.Parent = playerGui
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 320, 0, 220)
-mainFrame.Position = UDim2.new(0.5, -160, 0.4, -110)
+mainFrame.Size = UDim2.new(0, 340, 0, 220)
+mainFrame.Position = UDim2.new(0.5, -170, 0.4, -110)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.Active = true
 mainFrame.Draggable = true
@@ -42,7 +42,7 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -70, 1, 0)
 titleLabel.Position = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "Spedian Scripts v0.95"
+titleLabel.Text = "Spedian Scripts v0.96"
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextSize = 18
 titleLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
@@ -79,7 +79,7 @@ scrollFrame.BackgroundTransparency = 1
 scrollFrame.ScrollBarThickness = 8
 scrollFrame.Parent = mainFrame
 
--- GOD MODE + ANTI-RAGDOLL ALWAYS ON (silent, permanent)
+-- GOD MODE + ANTI-RAGDOLL ALWAYS ON (permanent)
 local function enableGodMode()
     if localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
         local hum = localPlayer.Character.Humanoid
@@ -87,27 +87,24 @@ local function enableGodMode()
         hum.Health = math.huge
         hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
         hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-        print("God Mode + Anti-Ragdoll applied")
     end
 end
 
--- Keep it on forever (every respawn + every frame)
 localPlayer.CharacterAdded:Connect(enableGodMode)
 RunService.Heartbeat:Connect(enableGodMode)  -- extra strong loop
-
 enableGodMode()
 
--- Clone Desync Phase
+-- Clone Desync Phase (strengthened with working methods)
 local cloneActive = false
 local cloneInstance = nil
 local cloneRoot = nil
 local cloneMoveConn = nil
 
-local phaseOffset = 48
+local phaseOffset = 52
 local cloneMoveSpeed = 14
 
 local function startCloneDesync()
-    print("Clone Phase Forward button clicked")
+    print("Clone Phase button clicked - starting")
     
     if cloneActive then
         stopCloneDesync()
@@ -115,16 +112,17 @@ local function startCloneDesync()
     end
 
     if not localPlayer.Character or not localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        print("No character - cannot start")
+        print("No character - waiting")
         return
     end
 
     cloneActive = true
-    print("Starting clone desync phase")
+    print("Creating clone and desyncing...")
 
     local char = localPlayer.Character
     local root = char.HumanoidRootPart
 
+    -- Create clone
     cloneInstance = char:Clone()
     cloneInstance.Name = "GhostClone"
     cloneInstance.Parent = workspace
@@ -135,10 +133,14 @@ local function startCloneDesync()
     print("Clone placed outside")
 
     cloneRoot = cloneInstance:FindFirstChild("HumanoidRootPart")
+    if cloneRoot then
+        pcall(function() cloneRoot:SetNetworkOwner(localPlayer) end)
+    end
+
     local cloneHum = cloneInstance:FindFirstChild("Humanoid")
     if cloneHum then cloneHum.WalkSpeed = 16 end
 
-    -- Clone moves left/right
+    -- Clone movement
     local direction = 1
     cloneMoveConn = RunService.Heartbeat:Connect(function(dt)
         if not cloneRoot then return end
@@ -147,15 +149,17 @@ local function startCloneDesync()
         cloneRoot.CFrame = cloneRoot.CFrame + move
         cloneRoot.AssemblyLinearVelocity = move * 40
     end)
-    print("Clone moving left/right outside")
+    print("Clone moving left/right")
 
-    -- Phase real body
+    -- Stronger phase
     root.AssemblyLinearVelocity = Vector3.zero
     root.Velocity = Vector3.zero
 
+    pcall(function() root:SetNetworkOwner(nil) task.wait(0.05) root:SetNetworkOwner(localPlayer) end)
+
     local phaseCFrame = root.CFrame + root.CFrame.LookVector * phaseOffset + Vector3.new(0, 4, 0)
     root.CFrame = phaseCFrame
-    print("Real body phased forward " .. phaseOffset .. " studs - inside now!")
+    print("Real body phased forward " .. phaseOffset .. " studs - you should be inside!")
 end
 
 local function stopCloneDesync()
@@ -168,34 +172,23 @@ local function stopCloneDesync()
 end
 
 -- GUI with ONLY the clone button
-local yPos = 10
+local yPos = 20
 local function refreshList()
     for _, child in ipairs(scrollFrame:GetChildren()) do
         if child:IsA("TextButton") or child:IsA("TextLabel") then child:Destroy() end
     end
-    yPos = 10
-
-    local exploitsLabel = Instance.new("TextLabel")
-    exploitsLabel.Size = UDim2.new(0.9, 0, 0, 30)
-    exploitsLabel.Position = UDim2.new(0.05, 0, 0, yPos)
-    exploitsLabel.BackgroundTransparency = 1
-    exploitsLabel.Text = "Clone Phase"
-    exploitsLabel.TextColor3 = Color3.fromRGB(255, 150, 0)
-    exploitsLabel.Font = Enum.Font.GothamBold
-    exploitsLabel.TextSize = 18
-    exploitsLabel.Parent = scrollFrame
-    yPos = yPos + 40
+    yPos = 20
 
     local clonePhaseButton = Instance.new("TextButton")
-    clonePhaseButton.Size = UDim2.new(0.9, 0, 0, 50)
+    clonePhaseButton.Size = UDim2.new(0.9, 0, 0, 60)
     clonePhaseButton.Position = UDim2.new(0.05, 0, 0, yPos)
     clonePhaseButton.BackgroundColor3 = Color3.fromRGB(100,60,100)
     clonePhaseButton.Text = "Clone Phase Forward (Desync)"
     clonePhaseButton.TextColor3 = Color3.new(1,1,1)
     clonePhaseButton.Font = Enum.Font.GothamSemibold
-    clonePhaseButton.TextSize = 16
+    clonePhaseButton.TextSize = 18
     clonePhaseButton.Parent = scrollFrame
-    yPos = yPos + 60
+    yPos = yPos + 80
 
     clonePhaseButton.MouseButton1Click:Connect(function()
         print("Clone Phase button clicked")
@@ -228,6 +221,7 @@ end)
 openBtn.Visible = not mainFrame.Visible
 
 print("Spedian Scripts v0.95 loaded")
-print("God Mode + Anti-Ragdoll is always on in background")
+print("God Mode + Anti-Ragdoll is always on")
 print("Press F2 to open GUI")
-print("Face base wall → Click 'Clone Phase Forward (Desync)'")
+print("Face base wall → Click the button")
+print("Check console (F9) for messages")
