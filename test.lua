@@ -1,12 +1,11 @@
 --[[
-Spedian Scripts v0.94 - Full GUI + Clone Desync Phase
-All your original features + working clone phase (moving clone outside, real body inside)
+Spedian Scripts v0.95 - Your exact request
+Full GUI + God Mode always on (no button) + Clone Phase Forward button only
+God Mode runs silently in background
 Press F2 to open GUI
-Face base wall → Click "Clone Phase Forward (Desync)" button
-Debug prints in console (F9) so we can see what's happening
 ]]
 
-print("Spedian Scripts v0.94 loading...")
+print("Spedian Scripts v0.95 loading...")
 
 local toggleKey = Enum.KeyCode.F2
 local Players = game:GetService("Players")
@@ -21,7 +20,6 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "SpedianScriptsUI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
-print("ScreenGui created and parented")
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
@@ -32,7 +30,6 @@ mainFrame.Active = true
 mainFrame.Draggable = true
 mainFrame.Visible = true
 mainFrame.Parent = screenGui
-print("MainFrame created and visible")
 
 -- Title bar
 local titleBar = Instance.new("Frame")
@@ -44,7 +41,7 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -80, 1, 0)
 titleLabel.Position = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "Spedian Scripts v0.94"
+titleLabel.Text = "Spedian Scripts v0.95"
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextSize = 18
 titleLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
@@ -81,7 +78,7 @@ scrollFrame.BackgroundTransparency = 1
 scrollFrame.ScrollBarThickness = 8
 scrollFrame.Parent = mainFrame
 
--- Speed & Safe (kept from your original)
+-- Speed & Safe
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(0.5, 0, 0, 30)
 speedLabel.Position = UDim2.new(0.05, 0, 0, 0)
@@ -139,9 +136,28 @@ local function teleportToPlayer(targetPlayer)
     if targetRoot then
         tweenToCFrame(targetRoot.CFrame + Vector3.new(0, 3, 0))
     end
+end)
+
+-- GOD MODE ALWAYS ON (no button, runs in background)
+local function enableGodMode()
+    if localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid") then
+        local hum = localPlayer.Character.Humanoid
+        hum.MaxHealth = math.huge
+        hum.Health = math.huge
+        hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+    end
 end
 
--- CLONE DESYNC PHASE (the part you wanted)
+-- Keep god mode on after respawn
+localPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    enableGodMode()
+end)
+
+enableGodMode() -- activate immediately
+
+-- Clone Desync Phase
 local cloneActive = false
 local cloneInstance = nil
 local cloneRoot = nil
@@ -151,7 +167,8 @@ local phaseOffset = 45
 local cloneMoveSpeed = 12
 
 local function startCloneDesync()
-    print("=== CLONE PHASE STARTED ===")
+    print("Clone Phase Forward button pressed")
+    
     if cloneActive then
         stopCloneDesync()
         task.wait(0.5)
@@ -163,6 +180,7 @@ local function startCloneDesync()
     end
 
     cloneActive = true
+    print("Starting clone desync phase")
 
     local char = localPlayer.Character
     local root = char.HumanoidRootPart
@@ -174,30 +192,30 @@ local function startCloneDesync()
 
     local behindCFrame = root.CFrame * CFrame.new(0, 0, 15)
     cloneInstance:PivotTo(behindCFrame)
-    print("Clone positioned behind")
+    print("Clone placed outside")
 
     cloneRoot = cloneInstance:FindFirstChild("HumanoidRootPart")
     local cloneHum = cloneInstance:FindFirstChild("Humanoid")
     if cloneHum then cloneHum.WalkSpeed = 16 end
 
-    -- Moving clone
+    -- Clone moves left/right
     local direction = 1
     cloneMoveConn = RunService.Heartbeat:Connect(function(dt)
         if not cloneRoot then return end
         direction = direction * -1
-        local moveVec = Vector3.new(direction * cloneMoveSpeed * dt, 0, 0)
-        cloneRoot.CFrame = cloneRoot.CFrame + moveVec
-        cloneRoot.AssemblyLinearVelocity = moveVec * 40
+        local move = Vector3.new(direction * cloneMoveSpeed * dt, 0, 0)
+        cloneRoot.CFrame = cloneRoot.CFrame + move
+        cloneRoot.AssemblyLinearVelocity = move * 40
     end)
-    print("Clone is now moving left/right")
+    print("Clone is moving left/right outside")
 
-    -- Phase real body
+    -- Phase real body inside
     root.AssemblyLinearVelocity = Vector3.zero
     root.Velocity = Vector3.zero
 
     local phaseCFrame = root.CFrame + root.CFrame.LookVector * phaseOffset + Vector3.new(0, 4, 0)
     root.CFrame = phaseCFrame
-    print("Real body phased forward " .. phaseOffset .. " studs - you should be inside!")
+    print("Real body phased forward " .. phaseOffset .. " studs - you should be inside")
 end
 
 local function stopCloneDesync()
@@ -206,7 +224,7 @@ local function stopCloneDesync()
     if cloneMoveConn then cloneMoveConn:Disconnect() end
     if cloneInstance then cloneInstance:Destroy() end
     cloneRoot = nil
-    print("Clone desync stopped")
+    print("Clone phase stopped")
 end
 
 -- GUI refresh
@@ -217,7 +235,7 @@ local function refreshList()
     end
     yPos = 90
 
-    -- Player list (kept short for speed)
+    -- Player list
     local playerLabel = Instance.new("TextLabel")
     playerLabel.Size = UDim2.new(0.9, 0, 0, 30)
     playerLabel.Position = UDim2.new(0.05, 0, 0, yPos - 40)
@@ -255,7 +273,30 @@ local function refreshList()
     exploitsLabel.Parent = scrollFrame
     yPos = yPos + 40
 
-    -- Clone Phase Button (the one you wanted)
+    -- Desync, Noclip, God (no god button - it's always on)
+    local desyncButton = Instance.new("TextButton")
+    desyncButton.Size = UDim2.new(0.9, 0, 0, 35)
+    desyncButton.Position = UDim2.new(0.05, 0, 0, yPos)
+    desyncButton.BackgroundColor3 = Color3.fromRGB(80,80,80)
+    desyncButton.Text = "Desync: OFF"
+    desyncButton.TextColor3 = Color3.new(1,1,1)
+    desyncButton.Font = Enum.Font.GothamSemibold
+    desyncButton.TextSize = 14
+    desyncButton.Parent = scrollFrame
+    yPos = yPos + 40
+
+    local noclipButton = Instance.new("TextButton")
+    noclipButton.Size = UDim2.new(0.9, 0, 0, 35)
+    noclipButton.Position = UDim2.new(0.05, 0, 0, yPos)
+    noclipButton.BackgroundColor3 = Color3.fromRGB(80,80,80)
+    noclipButton.Text = "Noclip: OFF"
+    noclipButton.TextColor3 = Color3.new(1,1,1)
+    noclipButton.Font = Enum.Font.GothamSemibold
+    noclipButton.TextSize = 14
+    noclipButton.Parent = scrollFrame
+    yPos = yPos + 40
+
+    -- Clone Phase Forward button
     local clonePhaseButton = Instance.new("TextButton")
     clonePhaseButton.Size = UDim2.new(0.9, 0, 0, 35)
     clonePhaseButton.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -295,20 +336,10 @@ UIS.InputBegan:Connect(function(input, processed)
         mainFrame.Visible = not mainFrame.Visible
         openBtn.Visible = not mainFrame.Visible
     end
-    if input.KeyCode == cloneKey then
-        print("RightShift pressed - clone toggle")
-        if cloneActive then
-            stopCloneDesync()
-        else
-            startCloneDesync()
-        end
-    end
 end)
 
 openBtn.Visible = not mainFrame.Visible
 
-print("Spedian Scripts v0.94 loaded")
+print("Spedian Scripts v0.95 loaded - God Mode is always on")
 print("Press F2 to open GUI")
 print("Face base wall → Click 'Clone Phase Forward (Desync)'")
-print("Press RightShift for quick toggle")
-print("Watch console (F9) for messages")
