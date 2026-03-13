@@ -1,7 +1,7 @@
 --[[
-Spedian Scripts - Full GUI for Steal a Brainrot
-Features: Tween TP to players, Desync, Noclip, God Mode, Clone Phase, TP to Own Base Collect, Reset Char, Instant Steal Nearest
-Use at your own risk - March 2026 version
+Spedian Scripts v0.91 - Full GUI for Steal a Brainrot
+Updated: Better desync cleanup, stronger reset for slowmo bug, all features intact
+Use at your own risk - March 2026
 ]]
 
 local toggleKey     = Enum.KeyCode.F2
@@ -38,7 +38,7 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -80, 1, 0)
 titleLabel.Position = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "Spedian Scripts v0.9"
+titleLabel.Text = "Spedian Scripts v0.91"
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextSize = 18
 titleLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
@@ -141,8 +141,14 @@ local function teleportToPlayer(targetPlayer)
     end
 end
 
--- Refresh player list + exploit buttons
-local yPos = 90  -- start after controls
+-- Refresh function with all buttons
+local yPos = 90
+local desyncEnabled = false
+local desyncConn
+local noclipEnabled = false
+local noclipConn
+local godEnabled = false
+
 local function refreshList()
     for _, child in ipairs(scrollFrame:GetChildren()) do
         if child:IsA("TextButton") or child:IsA("TextLabel") then child:Destroy() end
@@ -189,8 +195,7 @@ local function refreshList()
     exploitsLabel.Parent = scrollFrame
     yPos = yPos + 40
 
-    -- Desync Toggle
-    local desyncEnabled = false
+    -- Desync Toggle (improved cleanup)
     local desyncButton = Instance.new("TextButton")
     desyncButton.Size = UDim2.new(0.9, 0, 0, 35)
     desyncButton.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -201,7 +206,6 @@ local function refreshList()
     desyncButton.TextSize = 14
     desyncButton.Parent = scrollFrame
     yPos = yPos + 40
-    local desyncConn
     desyncButton.MouseButton1Click:Connect(function()
         desyncEnabled = not desyncEnabled
         desyncButton.Text = "Desync: " .. (desyncEnabled and "ON" or "OFF")
@@ -210,17 +214,37 @@ local function refreshList()
             desyncConn = RunService.Heartbeat:Connect(function()
                 if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     local root = localPlayer.Character.HumanoidRootPart
-                    root.Velocity = Vector3.new(math.random(-15,15), 0, math.random(-15,15))
+                    root.Velocity = Vector3.new(math.random(-10,10), 0, math.random(-10,10))
                     root.AssemblyLinearVelocity = Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
                 end
             end)
         else
-            if desyncConn then desyncConn:Disconnect() end
+            if desyncConn then desyncConn:Disconnect() desyncConn = nil end
+            if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                localPlayer.Character.HumanoidRootPart.Velocity = Vector3.zero
+                localPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+            end
         end
     end)
 
+    -- Auto-disable desync on death
+    localPlayer.CharacterAdded:Connect(function(char)
+        char:WaitForChild("Humanoid").Died:Connect(function()
+            if desyncEnabled then
+                desyncEnabled = false
+                desyncButton.Text = "Desync: OFF"
+                desyncButton.BackgroundColor3 = Color3.fromRGB(80,80,80)
+                if desyncConn then desyncConn:Disconnect() desyncConn = nil end
+                task.wait(0.1)
+                if char:FindFirstChild("HumanoidRootPart") then
+                    char.HumanoidRootPart.Velocity = Vector3.zero
+                    char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+                end
+            end
+        end)
+    end)
+
     -- Noclip Toggle
-    local noclipEnabled = false
     local noclipButton = Instance.new("TextButton")
     noclipButton.Size = UDim2.new(0.9, 0, 0, 35)
     noclipButton.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -231,7 +255,6 @@ local function refreshList()
     noclipButton.TextSize = 14
     noclipButton.Parent = scrollFrame
     yPos = yPos + 40
-    local noclipConn
     noclipButton.MouseButton1Click:Connect(function()
         noclipEnabled = not noclipEnabled
         noclipButton.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF")
@@ -245,12 +268,11 @@ local function refreshList()
                 end
             end)
         else
-            if noclipConn then noclipConn:Disconnect() end
+            if noclipConn then noclipConn:Disconnect() noclipConn = nil end
         end
     end)
 
     -- God Mode Toggle
-    local godEnabled = false
     local godButton = Instance.new("TextButton")
     godButton.Size = UDim2.new(0.9, 0, 0, 35)
     godButton.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -343,21 +365,30 @@ local function refreshList()
         end
     end)
 
-    -- Reset Character
+    -- Full Reset Character
     local resetButton = Instance.new("TextButton")
     resetButton.Size = UDim2.new(0.9, 0, 0, 35)
     resetButton.Position = UDim2.new(0.05, 0, 0, yPos)
     resetButton.BackgroundColor3 = Color3.fromRGB(180,80,80)
-    resetButton.Text = "Reset Character (fix slowmo)"
+    resetButton.Text = "Full Reset (fix slowmo/stuck)"
     resetButton.TextColor3 = Color3.new(1,1,1)
     resetButton.Font = Enum.Font.GothamSemibold
     resetButton.TextSize = 14
     resetButton.Parent = scrollFrame
     yPos = yPos + 40
     resetButton.MouseButton1Click:Connect(function()
+        if desyncConn then desyncConn:Disconnect() desyncConn = nil end
+        desyncEnabled = false
+        desyncButton.Text = "Desync: OFF"
+        desyncButton.BackgroundColor3 = Color3.fromRGB(80,80,80)
         if localPlayer.Character then
             local hum = localPlayer.Character:FindFirstChild("Humanoid")
             if hum then hum.Health = 0 end
+        end
+        task.wait(1.5)  -- wait for respawn
+        if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            localPlayer.Character.HumanoidRootPart.Velocity = Vector3.zero
+            localPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
         end
     end)
 
@@ -450,3 +481,5 @@ UIS.InputBegan:Connect(function(input, processed)
 end)
 
 openBtn.Visible = not mainFrame.Visible
+
+print("Spedian Scripts v0.91 loaded - Press F2 to open")
