@@ -1,7 +1,7 @@
 --[[
-Spedian Scripts v0.91 - Full GUI for Steal a Brainrot
-Updated: Better desync cleanup, stronger reset for slowmo bug, all features intact
-Use at your own risk - March 2026
+Spedian Scripts v0.92 - Full GUI for Steal a Brainrot
+Features: Tween TP, Desync (cleaned), Noclip, God Mode, Clone Phase, TP to Own Base, Full Reset, Instant Steal + Spam Toggle
+Use at your own risk - Updated for slowmo fix and better steal attempt
 ]]
 
 local toggleKey     = Enum.KeyCode.F2
@@ -20,8 +20,8 @@ screenGui.Parent = playerGui
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 340, 0, 560)
-mainFrame.Position = UDim2.new(0.5, -170, 0.35, -280)
+mainFrame.Size = UDim2.new(0, 340, 0, 620)
+mainFrame.Position = UDim2.new(0.5, -170, 0.35, -310)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.Active = true
 mainFrame.Draggable = true
@@ -38,7 +38,7 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -80, 1, 0)
 titleLabel.Position = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "Spedian Scripts v0.91"
+titleLabel.Text = "Spedian Scripts v0.92"
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextSize = 18
 titleLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
@@ -56,7 +56,7 @@ closeBtn.TextColor3 = Color3.fromRGB(255,255,255)
 closeBtn.Parent = titleBar
 
 local openBtn = Instance.new("TextButton")
-openBtn.Size = UDim2.new(0, 120, 0, 35)
+openBtn.Size = UDim2.new(0, 140, 0, 35)
 openBtn.Position = UDim2.new(0.02, 0, 0.02, 0)
 openBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
 openBtn.Text = "Spedian Scripts"
@@ -148,6 +148,8 @@ local desyncConn
 local noclipEnabled = false
 local noclipConn
 local godEnabled = false
+local autoStealEnabled = false
+local autoStealConn
 
 local function refreshList()
     for _, child in ipairs(scrollFrame:GetChildren()) do
@@ -195,7 +197,7 @@ local function refreshList()
     exploitsLabel.Parent = scrollFrame
     yPos = yPos + 40
 
-    -- Desync Toggle (improved cleanup)
+    -- Desync Toggle (improved)
     local desyncButton = Instance.new("TextButton")
     desyncButton.Size = UDim2.new(0.9, 0, 0, 35)
     desyncButton.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -365,7 +367,7 @@ local function refreshList()
         end
     end)
 
-    -- Full Reset Character
+    -- Full Reset Character (enhanced)
     local resetButton = Instance.new("TextButton")
     resetButton.Size = UDim2.new(0.9, 0, 0, 35)
     resetButton.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -392,7 +394,7 @@ local function refreshList()
         end
     end)
 
-    -- Instant Steal Nearest
+    -- Instant Steal Nearest + Spam Toggle
     local instantStealButton = Instance.new("TextButton")
     instantStealButton.Size = UDim2.new(0.9, 0, 0, 35)
     instantStealButton.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -404,17 +406,31 @@ local function refreshList()
     instantStealButton.Parent = scrollFrame
     yPos = yPos + 40
 
-    instantStealButton.MouseButton1Click:Connect(function()
+    local spamToggle = Instance.new("TextButton")
+    spamToggle.Size = UDim2.new(0.9, 0, 0, 35)
+    spamToggle.Position = UDim2.new(0.05, 0, 0, yPos)
+    spamToggle.BackgroundColor3 = Color3.fromRGB(80,80,80)
+    spamToggle.Text = "Spam Steal: OFF (hold near target)"
+    spamToggle.TextColor3 = Color3.new(1,1,1)
+    spamToggle.Font = Enum.Font.GothamSemibold
+    spamToggle.TextSize = 14
+    spamToggle.Parent = scrollFrame
+    yPos = yPos + 40
+
+    local autoStealEnabled = false
+    local autoStealConn
+
+    local function attemptSteal()
         if not localPlayer.Character or not localPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
         local root = localPlayer.Character.HumanoidRootPart
         local closest = nil
         local minDist = math.huge
 
         for _, obj in ipairs(workspace:GetDescendants()) do
-            if (obj.Name:lower():find("brainrot") or obj.Name:lower():find("pet") or obj.Name:lower():find("steal")) and (obj:IsA("BasePart") or obj:IsA("Model")) then
+            if (obj.Name:lower():find("brainrot") or obj.Name:lower():find("pet") or obj.Name:lower():find("steal") or obj.Name:lower():find("brain")) and (obj:IsA("BasePart") or obj:IsA("Model")) then
                 local pos = obj:IsA("Model") and (obj.PrimaryPart and obj.PrimaryPart.Position or obj:GetPivot().Position) or obj.Position
                 local dist = (root.Position - pos).Magnitude
-                if dist < minDist and dist < 60 then
+                if dist < minDist and dist < 40 then
                     minDist = dist
                     closest = obj
                 end
@@ -424,14 +440,11 @@ local function refreshList()
         if closest then
             local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") or game:GetService("ReplicatedStorage")
             local candidates = {
-                remotes:FindFirstChild("StealBrainrot"),
-                remotes:FindFirstChild("Steal"),
-                remotes:FindFirstChild("DeliverySteal"),
-                remotes:FindFirstChild("Grab"),
-                remotes:FindFirstChild("Claim")
+                "StealBrainrot", "Steal", "DeliverySteal", "Grab", "Claim", "StealPet", "TakeBrainrot", "StealItem", "CollectBrainrot", "BrainrotSteal", "PetSteal", "GrabBrain"
             }
 
-            for _, r in ipairs(candidates) do
+            for _, name in ipairs(candidates) do
+                local r = remotes:FindFirstChild(name, true)  -- recursive search
                 if r then
                     pcall(function()
                         if r:IsA("RemoteEvent") then r:FireServer(closest) end
@@ -446,13 +459,28 @@ local function refreshList()
                     fireproximityprompt(prompt)
                 end)
             end
-
-            instantStealButton.Text = "Steal Attempted!"
-            task.delay(2, function() instantStealButton.Text = "Instant Steal Nearest" end)
-        else
-            instantStealButton.Text = "No Brainrot nearby!"
-            task.delay(2, function() instantStealButton.Text = "Instant Steal Nearest" end)
         end
+    end
+
+    spamToggle.MouseButton1Click:Connect(function()
+        autoStealEnabled = not autoStealEnabled
+        spamToggle.Text = "Spam Steal: " .. (autoStealEnabled and "ON (hold near target)" or "OFF")
+        spamToggle.BackgroundColor3 = autoStealEnabled and Color3.fromRGB(60,180,60) or Color3.fromRGB(80,80,80)
+        if autoStealEnabled then
+            autoStealConn = RunService.RenderStepped:Connect(function()
+                if autoStealEnabled then
+                    attemptSteal()
+                end
+            end)
+        else
+            if autoStealConn then autoStealConn:Disconnect() autoStealConn = nil end
+        end
+    end)
+
+    instantStealButton.MouseButton1Click:Connect(function()
+        attemptSteal()
+        instantStealButton.Text = "Attempted!"
+        task.delay(1.5, function() instantStealButton.Text = "Instant Steal Nearest" end)
     end)
 
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPos + 60)
@@ -482,4 +510,4 @@ end)
 
 openBtn.Visible = not mainFrame.Visible
 
-print("Spedian Scripts v0.91 loaded - Press F2 to open")
+print("Spedian Scripts v0.92 loaded - Press F2 to open")
